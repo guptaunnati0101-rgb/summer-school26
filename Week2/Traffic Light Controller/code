@@ -1,1 +1,37 @@
+// Traffic Light Controller
 
+int redLED = 10;
+int yellowLED = 9;
+int greenLED = 8;
+
+void setup() {
+  pinMode(redLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(greenLED, OUTPUT);
+}
+
+void loop() {
+  // RED ON
+  digitalWrite(redLED, HIGH);
+  digitalWrite(yellowLED, LOW);
+  digitalWrite(greenLED, LOW);
+  delay(5000);   // 5 seconds
+
+  // RED + YELLOW ON
+  digitalWrite(redLED, HIGH);
+  digitalWrite(yellowLED, HIGH);
+  digitalWrite(greenLED, LOW);
+  delay(2000);   // 2 seconds
+
+  // GREEN ON
+  digitalWrite(redLED, LOW);
+  digitalWrite(yellowLED, LOW);
+  digitalWrite(greenLED, HIGH);
+  delay(5000);   // 5 seconds
+
+  // YELLOW ON
+  digitalWrite(redLED, LOW);
+  digitalWrite(yellowLED, HIGH);
+  digitalWrite(greenLED, LOW);
+  delay(2000);   // 2 seconds
+}
