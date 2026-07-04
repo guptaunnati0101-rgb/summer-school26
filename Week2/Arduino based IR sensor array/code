@@ -1,1 +1,67 @@
+// 8 IR Sensor Parking / Slot Detection System
+// Green = low occupancy
+// Yellow = medium occupancy
+// Red = high occupancy
 
+int irPins[8] = {2, 3, 4, 5, 6, 7, 8, 9};
+
+int greenLED = 10;
+int yellowLED = 11;
+int redLED = 12;
+
+void setup() {
+  Serial.begin(9600);
+
+  // IR sensor pins as input
+  for (int i = 0; i < 8; i++) {
+    pinMode(irPins[i], INPUT);
+  }
+
+  // LED pins as output
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+
+  digitalWrite(greenLED, LOW);
+  digitalWrite(yellowLED, LOW);
+  digitalWrite(redLED, LOW);
+}
+
+void loop() {
+  int occupiedCount = 0;
+
+  // Count how many IR sensors detect object
+  for (int i = 0; i < 8; i++) {
+    int sensorValue = digitalRead(irPins[i]);
+
+    // Most IR obstacle sensors give LOW when object is detected
+    if (sensorValue == LOW) {
+      occupiedCount++;
+    }
+  }
+
+  Serial.print("Occupied Slots: ");
+  Serial.println(occupiedCount);
+
+  // LED logic
+  if (occupiedCount <= 2) {
+    // GREEN
+    digitalWrite(greenLED, HIGH);
+    digitalWrite(yellowLED, LOW);
+    digitalWrite(redLED, LOW);
+  }
+  else if (occupiedCount >= 3 && occupiedCount <= 5) {
+    // YELLOW
+    digitalWrite(greenLED, LOW);
+    digitalWrite(yellowLED, HIGH);
+    digitalWrite(redLED, LOW);
+  }
+  else {
+    // RED
+    digitalWrite(greenLED, LOW);
+    digitalWrite(yellowLED, LOW);
+    digitalWrite(redLED, HIGH);
+  }
+
+  delay(300);
+}
