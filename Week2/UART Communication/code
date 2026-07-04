@@ -1,1 +1,34 @@
+// UART Transmitter Code
 
+void setup() {
+  Serial.begin(9600);   // start UART communication
+}
+
+void loop() {
+  Serial.write('1');    // send 1
+  delay(2000);
+
+  Serial.write('0');    // send 0
+  delay(2000);
+}
+// UART Receiver Code
+
+char data;
+
+void setup() {
+  pinMode(7, OUTPUT);
+  Serial.begin(9600);   // start UART communication
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    data = Serial.read();
+
+    if (data == '1') {
+      digitalWrite(7, HIGH);   // LED ON
+    }
+    else if (data == '0') {
+      digitalWrite(7, LOW);    // LED OFF
+    }
+  }
+}
