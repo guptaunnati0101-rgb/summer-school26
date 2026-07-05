@@ -1,1 +1,118 @@
+#include <Servo.h>
 
+Servo gateServo;
+
+// ---------------- PIN DEFINITIONS ----------------
+const int pirPin = 2;         // PIR output
+const int trigPin = 3;        // HC-SR04 trig
+const int echoPin = 4;        // HC-SR04 echo
+const int buzzerPin = 5;      // buzzer
+const int servoPin = 6;       // servo signal
+const int ldrPin = A0;        // LDR analog pin
+// Laser module can stay ON from 5V, no code needed unless connected to digital pin
+
+// ---------------- SETTINGS ----------------
+const int openAngle = 90;         // gate open angle
+const int closeAngle = 0;         // gate close angle
+const int distanceThreshold = 15; // cm, open gate if object is closer than this
+const int ldrThreshold = 500;     // adjust after testing
+const unsigned long gateOpenTime = 5000; // keep gate open for 5 sec
+
+bool gateOpen = false;
+unsigned long gateOpenedAt = 0;
+
+// ------------------------------------------------
+long readDistanceCM() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH, 30000); // timeout 30ms
+  if (duration == 0) return 999; // no echo
+
+  long distance = duration * 0.034 / 2;
+  return distance;
+}
+
+// ------------------------------------------------
+void openGate() {
+  gateServo.write(openAngle);
+  gateOpen = true;
+  gateOpenedAt = millis();
+
+  // short buzzer beep
+  tone(buzzerPin, 1000, 300);
+  Serial.println("Gate OPENED");
+}
+
+// ------------------------------------------------
+void closeGate() {
+  gateServo.write(closeAngle);
+  gateOpen = false;
+  noTone(buzzerPin);
+  Serial.println("Gate CLOSED");
+}
+
+// ------------------------------------------------
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(pirPin, INPUT);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+
+  gateServo.attach(servoPin);
+  gateServo.write(closeAngle);
+
+  Serial.println("Safety Barrier System Started");
+}
+
+// ------------------------------------------------
+void loop() {
+  int pirState = digitalRead(pirPin);     // 1 = motion detected
+  long distance = readDistanceCM();       // ultrasonic distance
+  int ldrValue = analogRead(ldrPin);      // laser beam check
+
+  Serial.print("PIR: ");
+  Serial.print(pirState);
+  Serial.print(" | Distance: ");
+  Serial.print(distance);
+  Serial.print(" cm | LDR: ");
+  Serial.println(ldrValue);
+
+  // -------- OPEN GATE CONDITION --------
+  // Gate opens if PIR detects motion AND object is close enough
+  if (!gateOpen && pirState == HIGH && distance <= distanceThreshold) {
+    openGate();
+  }
+
+  // -------- WHILE GATE IS OPEN --------
+  if (gateOpen) {
+
+    // If laser beam is broken while gate is open/closing area occupied,
+    // keep buzzer on shortly and reset timer
+    if (ldrValue < ldrThreshold) {
+      tone(buzzerPin, 1500);  // continuous warning
+      gateOpenedAt = millis(); // keep gate open longer
+      Serial.println("Beam broken / object in path!");
+    } else {
+      noTone(buzzerPin);
+    }
+
+    // after open time, try to close only if beam is clear
+    if (millis() - gateOpenedAt >= gateOpenTime) {
+      if (ldrValue >= ldrThreshold) {
+        closeGate();
+      } else {
+        // object still under gate, keep open
+        gateOpenedAt = millis();
+      }
+    }
+  }
+
+  delay(200);
+}
