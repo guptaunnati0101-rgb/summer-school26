@@ -1,1 +1,77 @@
+Approach: Measure distance to water surface with HC-SR04 (smaller distance = higher water), apply a 10-sample rolling average to filter ultrasonic noise, and classify into NORMAL/WARNING/CRITICAL bands with distinct LED/buzzer patterns, broadcasting the alert level as a simple string.
+cpp
+#define TRIG_PIN 5
+#define ECHO_PIN 18
+#define LED_GREEN 25
+#define LED_YELLOW 26
+#define LED_RED 27
+#define BUZZER_PIN 14
+
+
+const int SAMPLES = 10;
+float readings[SAMPLES];
+int idx = 0;
+float total = 0;
+
+
+float readDistanceCM() {
+  digitalWrite(TRIG_PIN, LOW); delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000); // 30ms timeout
+  return duration * 0.0343 / 2.0;
+}
+
+
+float updateRollingAverage(float newVal) {
+  total -= readings[idx];
+  readings[idx] = newVal;
+  total += newVal;
+  idx = (idx + 1) % SAMPLES;
+  return total / SAMPLES;
+}
+
+
+e at boot
+  total = 100 * SAMPLES;
+}
+
+
+void loop() {
+  float raw = readDistanceCM();
+  float avgClearance = updateRollingAverage(raw);
+
+
+  String level;
+  digitalWrite(LED_GREEN, LOW);
+  digitalWrite(LED_YELLOW, LOW);
+  digitalWrite(LED_RED, LOW);
+  noTone(BUZZER_PIN);
+
+
+  if (avgClearance > 30) {
+    level = "NORMAL";
+    digitalWrite(LED_GREEN, HIGH);
+  } else if (avgClearance > 15) {
+    level = "WARNING";
+    digitalWrite(LED_YELLOW, HIGH);
+    tone(BUZZER_PIN, 1000, 200);
+  } else {
+    level = "CRITICAL";
+    digitalWrite(LED_RED, HIGH);
+    tone(BUZZER_PIN, 2500, 400);
+  }
+
+
+  Serial.print("Clearance="); Serial.print(avgClearance);
+  Serial.print("cm Level="); Serial.println(level);
+
+
+  // Wi-Fi/BT broadcast: e.g., Serial2.println(level); or MQTT publish.
+  // A web dashboard using Chart.js polls a small backend/WebSocket bridge
+  // fed by this MQTT topic to plot avgClearance as a live line graph.
+
+
+  delay(500);
+}
 
