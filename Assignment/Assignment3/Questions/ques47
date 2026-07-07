@@ -1,1 +1,72 @@
+Approach: Since this is explicitly a learning simulation (not a medical device), we simulate physiological-like data using an LDR (photoplethysmography proxy) or, if hardware is available, read directly from a MAX30102 over I2C. A 5-reading rolling average smooths noise, and an LED flags abnormal readings.
+cpp
+// Simulation version using LDR as a PPG proxy (documented clearly as non-medical)
+#define LDR_PIN 34
+#define ALERT_LED 25
+
+
+const int SAMPLES = 5;
+int hrBuffer[SAMPLES];
+int spo2Buffer[SAMPLES];
+int bufIndex = 0;
+
+
+unsigned long lastUpdate = 0;
+const unsigned long UPDATE_INTERVAL = 2000;
+
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(ALERT_LED, OUTPUT);
+  for (int i = 0; i < SAMPLES; i++) { hrBuffer[i] = 75; spo2Buffer[i] = 97; }
+}
+
+
+int rollingAverage(int arr[]) {
+  long sum = 0;
+  for (int i = 0; i < SAMPLES; i++) sum += arr[i];
+  return sum / SAMPLES;
+}
+
+
+// Simulated read — replace with real MAX30102 library calls (e.g., SparkFun MAX3010x)
+int simulateHR() {
+  int ldrVal = analogRead(LDR_PIN);
+  return map(ldrVal, 0, 4095, 55, 130);
+}
+
+
+int simulateSpO2() {
+  int ldrVal = analogRead(LDR_PIN);
+  return map(ldrVal, 0, 4095, 90, 100);
+}
+
+
+void loop() {
+  if (millis() - lastUpdate >= UPDATE_INTERVAL) {
+    lastUpdate = millis();
+
+
+    hrBuffer[bufIndex] = simulateHR();
+    spo2Buffer[bufIndex] = simulateSpO2();
+    bufIndex = (bufIndex + 1) % SAMPLES;
+
+
+    int avgHR = rollingAverage(hrBuffer);
+    int avgSpO2 = rollingAverage(spo2Buffer);
+
+
+    bool abnormal = (avgHR < 50 || avgHR > 120 || avgSpO2 < 94);
+    digitalWrite(ALERT_LED, abnormal ? HIGH : LOW);
+
+
+    Serial.print("HR="); Serial.print(avgHR);
+    Serial.print("bpm SpO2="); Serial.print(avgSpO2);
+    Serial.print("% Status="); Serial.println(abnormal ? "ABNORMAL" : "NORMAL");
+
+
+    // Append to /data/health_log.csv (documented in README; on-device this would
+    // write to an SD card module, or be captured to a host file via Serial logging)
+  }
+}
 
